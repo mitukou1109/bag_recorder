@@ -40,16 +40,14 @@ topics_check = CheckScroll(
     check="*",
     align=4,
     margin=2,
-    height=min(len(topic_list), 10),
+    height=10,
 )
 
-topics_to_record = topics_check.launch()
-
-options = []
-if len(sys.argv) > 1:
-    options = sys.argv[1:]
-
 try:
+    topics_to_record = topics_check.launch()
+    if not topics_to_record:
+        exit()
+    options = sys.argv[1:] if len(sys.argv) > 1 else []
     subprocess.run(bag_record_command + topics_to_record + options)
 except KeyboardInterrupt:
     exit()
