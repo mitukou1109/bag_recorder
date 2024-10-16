@@ -5,6 +5,8 @@ import subprocess
 import sys
 import os
 
+cache_path = f"{os.getcwd()}/.bag_recorder_cache"
+
 excluded_topics = [
     "/rosout",
     "/rosout_agg",
@@ -34,19 +36,30 @@ if not topic_list:
     print("No topics available to record\n")
     exit(1)
 
+check_list = None
+try:
+    with open(cache_path, "r") as f:
+        last_recorded_topics = [s.rstrip() for s in f.readlines()]
+    check_list = [topic in last_recorded_topics for topic in topic_list]
+except FileNotFoundError:
+    pass
+
 topics_check = CheckScroll(
     prompt="Choose topics to record:",
     choices=topic_list,
     check="*",
+    checked=check_list,
     align=4,
     margin=2,
-    height=10,
+    height=30,
 )
 
 try:
     topics_to_record = topics_check.launch()
     if not topics_to_record:
         exit()
+    with open(cache_path, "w") as f:
+        f.write("\n".join(topics_to_record))
     options = sys.argv[1:] if len(sys.argv) > 1 else []
     subprocess.run(bag_record_command + topics_to_record + options)
 except KeyboardInterrupt:
