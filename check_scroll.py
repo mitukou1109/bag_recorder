@@ -9,6 +9,7 @@ class CheckScroll:
         *,
         prompt: str,
         choices: list,
+        checked: list[bool],
         check: str,
         align: int,
         margin: int,
@@ -21,7 +22,7 @@ class CheckScroll:
 
         self.prompt = prompt
         self.choices = choices
-        self.checked = [False] * len(self.choices)
+        self.checked = checked if checked is not None else [False] * len(self.choices)
         self.pos = 0
 
         self.align = align
