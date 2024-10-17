@@ -1,6 +1,6 @@
 import bullet
 import bullet.charDef
-
+from typing import List
 
 @bullet.keyhandler.init
 class CheckScroll:
@@ -8,8 +8,8 @@ class CheckScroll:
         self,
         *,
         prompt: str,
-        choices: list,
-        checked: list[bool],
+        choices: List[str],
+        checked: List[bool],
         check: str,
         align: int,
         margin: int,
