@@ -51,7 +51,6 @@ topics_check = CheckScroll(
     checked=check_list,
     align=4,
     margin=2,
-    height=30,
 )
 
 try:

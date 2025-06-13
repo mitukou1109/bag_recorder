@@ -1,6 +1,10 @@
+import shutil
+import signal
+from typing import List
+
 import bullet
 import bullet.charDef
-from typing import List
+
 
 @bullet.keyhandler.init
 class CheckScroll:
@@ -13,7 +17,6 @@ class CheckScroll:
         check: str,
         align: int,
         margin: int,
-        height: int,
     ):
         if not choices:
             raise ValueError("Choices cannot be empty!")
@@ -33,9 +36,11 @@ class CheckScroll:
         self.check = check
 
         self.max_width = len(max(self.choices, key=len))
-        self.height = min(len(self.choices), height)
 
         self.top = 0
+        self._update_height()
+
+        signal.signal(signal.SIGWINCH, self._handle_window_change)
 
     def renderRows(self):
         self.printBorder(indicator=self.up_indicator if self.top != 0 else "")
@@ -133,18 +138,33 @@ class CheckScroll:
 
     @bullet.keyhandler.register(bullet.charDef.INTERRUPT_KEY)
     def interrupt(self):
-        d = self.top + self.height - self.pos
-        bullet.utils.moveCursorDown(d)
+        bullet.utils.moveCursorDown(self.top + self.height - self.pos)
         raise KeyboardInterrupt
 
     def launch(self):
         if self.prompt:
             bullet.utils.forceWrite(self.prompt + "\n")
         self.renderRows()
-        bullet.utils.forceWrite("\n")
-        bullet.utils.moveCursorUp(self.height + 1)
+        bullet.utils.moveCursorUp(self.height)
         with bullet.cursor.hide():
             while True:
                 ret = self.handle_input()
                 if ret is not None:
                     return ret
+
+    def _update_height(self):
+        self.height = min(len(self.choices), shutil.get_terminal_size().lines - 3)
+
+    def _handle_window_change(self, *_):
+        bullet.utils.moveCursorDown(self.top + self.height - self.pos + 1)
+        bullet.utils.clearConsoleUp(self.height + 2)
+        bullet.utils.moveCursorDown(1)
+
+        self._update_height()
+        if self.pos >= self.top + self.height:
+            self.pos = self.top + self.height - 1
+
+        if self.prompt:
+            bullet.utils.forceWrite(self.prompt + "\n")
+        self.renderRows()
+        bullet.utils.moveCursorUp(self.top + self.height - self.pos)
