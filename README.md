@@ -1,49 +1,43 @@
 # bag_recorder
 
-Interactive ROS bag recorder with topic selection for ROS 1 and ROS 2
+Interactive ROS bag recorder with topic selection for ROS 1 and ROS 2.
 
-## Features
+> Streamline your ROS bag recording workflow with an intuitive terminal UI designed to make topic selection quick and effortless.
 
-- **Interactive Topic Selection**: Choose topics to record with a scrollable checklist
-- **ROS 1 & ROS 2 Support**: Automatically detects your ROS version
-- **Topic Filtering**: Excludes common system topics (`/rosout`, `/rosout_agg`, `/parameter_events`)
-- **Selection Memory**: Remembers your last selection for the next run
-- **Scrollable Interface**: Handles large topic lists with scroll indicators
+## ✨ Features
 
-## Requirements
+- **Interactive Topic Selection**: Choose topics to record with a scrollable checklist interface
+- **ROS 1 & ROS 2 Support**: Automatically detects your ROS version and uses the appropriate commands
+- **Topic Filtering**: Excludes common system topics (`/rosout`, `/rosout_agg`, `/parameter_events`) by default
+- **Selection Memory**: Remembers your last selection for faster setup on subsequent runs
+- **Scrollable Interface**: Handles large topic lists with visual scroll indicators
+
+## 📋 Requirements
 
 - ROS 1 or ROS 2
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) - Modern Python package and project manager
 
-## Installation
-
-```bash
-git clone https://github.com/mitukou1109/bag_recorder.git
-cd bag_recorder
-```
-
-Install dependencies with [uv](https://docs.astral.sh/uv/getting-started/installation/):
+## ⚡ Quick Start
 
 ```bash
-uv sync
+uv tool install git+https://github.com/mitukou1109/bag_recorder
+record-bag
 ```
 
-Or with pip:
+## 📖 Usage
+
+### Basic Usage
 
 ```bash
-pip install .
+record-bag
 ```
 
-## Usage
-
-```bash
-uv run main.py
-```
+### With Options
 
 Pass additional options to the bag record command:
 
 ```bash
-# Specify output directory
-uv run main.py -o /path/to/output
+record-bag -a -o /path/to/output
 ```
 
 ### Interactive Controls
@@ -51,4 +45,4 @@ uv run main.py -o /path/to/output
 - **↑/↓**: Navigate through topics
 - **Space**: Toggle topic selection
 - **Enter**: Start recording selected topics
-- **Ctrl+C**: Cancel
+- **Ctrl+C**: Cancel and exit
