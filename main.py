@@ -1,9 +1,8 @@
-#!/usr/bin/python3
-
-from .check_scroll import CheckScroll
+import os
 import subprocess
 import sys
-import os
+
+from check_scroll import CheckScroll
 
 cache_path = f"{os.getcwd()}/.bag_recorder_cache"
 
