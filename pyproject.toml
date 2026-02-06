@@ -3,7 +3,17 @@ name = "bag-recorder"
 version = "0.1.0"
 description = "Interactive ROS bag recorder with topic selection for ROS 1 and ROS 2"
 readme = "README.md"
+authors = [
+    { name = "mitukou1109", email = "mitukou1109@gmail.com" }
+]
 requires-python = ">=3.10"
 dependencies = [
     "bullet>=2.2.0",
 ]
+
+[project.scripts]
+record-bag = "bag_recorder.main:main"
+
+[build-system]
+requires = ["uv_build>=0.9.30,<0.10.0"]
+build-backend = "uv_build"
