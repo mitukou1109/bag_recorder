@@ -1,6 +1,6 @@
 [project]
 name = "bag-recorder"
-version = "0.1.0"
+version = "1.0.0"
 description = "Interactive ROS bag recorder with topic selection for ROS 1 and ROS 2"
 readme = "README.md"
 authors = [
