@@ -3,7 +3,7 @@
 import sys
 
 from bag_recorder.cache import get_cache_path, load_cached_selection, save_selection
-from bag_recorder.ros import fetch_topic_list, get_ros_commands, record_bag
+from bag_recorder.ros import fetch_topic_list, get_ros_config, record_bag
 from bag_recorder.ui import select_topics
 
 
@@ -11,16 +11,20 @@ def main() -> None:
     """Main entry point."""
     try:
         cache_path = get_cache_path()
-        topic_list_cmd, bag_record_cmd = get_ros_commands()
+        ros_config = get_ros_config()
 
         # Fetch available topics
-        topics = fetch_topic_list(topic_list_cmd)
+        topics = fetch_topic_list(ros_config.topic_list_cmd)
 
         # Load cached selection
-        cached_selection = load_cached_selection(cache_path, topics)
+        cached_selection, cached_process_indices = load_cached_selection(
+            cache_path, topics
+        )
 
         # Select topics interactively
-        selected_topics = select_topics(topics, cached_selection)
+        selected_topics = select_topics(
+            topics, cached_selection, cached_process_indices
+        )
 
         if not selected_topics:
             sys.exit(0)
@@ -30,7 +34,7 @@ def main() -> None:
 
         # Record bag
         additional_args = sys.argv[1:]
-        record_bag(bag_record_cmd, selected_topics, additional_args)
+        record_bag(ros_config, selected_topics, additional_args)
 
     except KeyboardInterrupt:
         sys.exit(0)
