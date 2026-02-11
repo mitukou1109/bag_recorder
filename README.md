@@ -49,6 +49,16 @@ record-bag -a -o /path/to/output
 - **Enter**: Start recording selected topics
 - **Ctrl+C**: Cancel and exit
 
+### Upgrade
+
+To upgrade to the latest version, run:
+
+```bash
+uv tool upgrade bag_recorder
+```
+
+## 🛠️ Implementation Details
+
 ### Process Index
 
 Each checked topic has a process index (shown before the topic name) that determines which `rosbag`/`ros2 bag` process it belongs to.
