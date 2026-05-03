@@ -2,10 +2,14 @@
 
 import shutil
 import signal
-from typing import List, Optional
+from collections.abc import Callable, Sequence
+from typing import Any, cast
 
-import bullet
-import bullet.charDef
+import bullet.charDef as charDef
+import bullet.colors as colors
+import bullet.cursor as cursor
+import bullet.keyhandler as keyhandler
+import bullet.utils as utils
 
 # Constants
 MIN_TERMINAL_LINES = 3
@@ -15,7 +19,6 @@ DEFAULT_PROCESS_INDEX = 1
 UNASSIGNED_INDEX_LABEL = "-"
 
 
-@bullet.keyhandler.init
 class CheckScroll:
     """Interactive scrollable checkbox list for terminal.
 
@@ -32,13 +35,13 @@ class CheckScroll:
         self,
         *,
         prompt: str,
-        choices: List[str],
-        checked: Optional[List[bool]] = None,
-        process_indices: Optional[List[Optional[int]]] = None,
+        choices: list[str],
+        checked: Sequence[bool] | None = None,
+        process_indices: Sequence[int | None] | None = None,
         check: str = "*",
         align: int = 4,
         margin: int = 2,
-    ):
+    ) -> None:
         """Initialize CheckScroll.
 
         Args:
@@ -59,14 +62,21 @@ class CheckScroll:
 
         self.prompt = prompt
         self.choices = choices
-        self.checked = checked if checked is not None else [False] * len(self.choices)
+        self.checked = (
+            list(checked)[: len(self.choices)]
+            if checked is not None
+            else [False] * len(self.choices)
+        )
+        self.checked.extend([False] * (len(self.choices) - len(self.checked)))
         self.pos = 0
         self.top = 0
 
         if process_indices is None:
-            self.process_indices = [DEFAULT_PROCESS_INDEX] * len(self.choices)
+            self.process_indices: list[int | None] = [
+                DEFAULT_PROCESS_INDEX
+            ] * len(self.choices)
         else:
-            sanitized = []
+            sanitized: list[int | None] = []
             for value in process_indices:
                 if value is None:
                     sanitized.append(None)
@@ -90,12 +100,12 @@ class CheckScroll:
     def render_rows(self) -> None:
         """Render visible rows with scroll indicators."""
         self._print_border(indicator=UP_INDICATOR if self.top != 0 else "")
-        bullet.utils.forceWrite("\n")
+        utils.forceWrite("\n")
 
         bottom = self.top + self.height
         for i in range(self.top, bottom):
             self._print_row(i)
-            bullet.utils.forceWrite("\n")
+            utils.forceWrite("\n")
 
         self._print_border(
             indicator=DOWN_INDICATOR if bottom < len(self.choices) else ""
@@ -120,31 +130,31 @@ class CheckScroll:
         Args:
             idx: Index of the row to print
         """
-        bullet.utils.forceWrite(" " * self.align)
+        utils.forceWrite(" " * self.align)
 
         is_selected = idx == self.pos
         bg_color = (
-            bullet.colors.REVERSE
+            colors.REVERSE
             if is_selected
-            else bullet.colors.background["default"]
+            else colors.background["default"]
         )
         fg_color = (
-            bullet.colors.REVERSE
+            colors.REVERSE
             if is_selected
-            else bullet.colors.foreground["default"]
+            else colors.foreground["default"]
         )
 
         # Print checkbox
         checkbox = self.check if self.checked[idx] else " " * len(self.check)
-        bullet.utils.cprint(checkbox + " " * self.margin, fg_color, bg_color, end="")
+        utils.cprint(checkbox + " " * self.margin, fg_color, bg_color, end="")
 
         # Print choice text with padding
         label = self._choice_label(idx)
-        bullet.utils.cprint(label, fg_color, bg_color, end="")
+        utils.cprint(label, fg_color, bg_color, end="")
         padding = " " * (self.max_width - len(label))
-        bullet.utils.cprint(padding, on=bg_color, end="")
+        utils.cprint(padding, on=bg_color, end="")
 
-        bullet.utils.moveCursorHead()
+        utils.moveCursorHead()
 
     def _print_border(self, indicator: str = "") -> None:
         """Print border with optional scroll indicator.
@@ -152,11 +162,11 @@ class CheckScroll:
         Args:
             indicator: Text to show in the border (e.g., scroll arrows)
         """
-        bullet.utils.forceWrite(" " * (self.align + len(self.check) + self.margin))
-        bullet.utils.cprint(indicator, end="")
-        bullet.utils.moveCursorHead()
+        utils.forceWrite(" " * (self.align + len(self.check) + self.margin))
+        utils.cprint(indicator, end="")
+        utils.moveCursorHead()
 
-    @bullet.keyhandler.register(bullet.charDef.SPACE_CHAR)
+    @keyhandler.register(charDef.SPACE_CHAR)
     def toggle_row(self) -> None:
         """Toggle the checkbox state of the current row."""
         self.checked[self.pos] = not self.checked[self.pos]
@@ -168,7 +178,7 @@ class CheckScroll:
         self._normalize_process_indices()
         self._print_row(self.pos)
 
-    @bullet.keyhandler.register(bullet.charDef.ARROW_LEFT_KEY)
+    @keyhandler.register(charDef.ARROW_LEFT_KEY)
     def decrease_process_index(self) -> None:
         """Decrease process index for the current checked row."""
         if not self.checked[self.pos]:
@@ -181,41 +191,42 @@ class CheckScroll:
         self.process_indices[self.pos] = current_value - 1
         self._normalize_process_indices()
 
-    @bullet.keyhandler.register(bullet.charDef.ARROW_RIGHT_KEY)
+    @keyhandler.register(charDef.ARROW_RIGHT_KEY)
     def increase_process_index(self) -> None:
         """Increase process index for the current checked row."""
         if not self.checked[self.pos]:
             return
-        if self.process_indices[self.pos] is None:
-            self.process_indices[self.pos] = DEFAULT_PROCESS_INDEX
+        current_value = self.process_indices[self.pos]
+        if current_value is None:
+            current_value = DEFAULT_PROCESS_INDEX
         max_index = self._max_index()
-        if self.process_indices[self.pos] >= max_index:
+        if current_value >= max_index:
             return
-        self.process_indices[self.pos] += 1
+        self.process_indices[self.pos] = current_value + 1
         self._normalize_process_indices()
 
-    @bullet.keyhandler.register(bullet.charDef.ARROW_UP_KEY)
+    @keyhandler.register(charDef.ARROW_UP_KEY)
     def move_up(self) -> None:
         """Move selection up, scrolling if necessary."""
         if self.pos == self.top:
             if self.top == 0:
                 return
             # Scroll up
-            bullet.utils.moveCursorUp(1)
-            bullet.utils.clearConsoleDown(self.height + 1)
+            utils.moveCursorUp(1)
+            utils.clearConsoleDown(self.height + 1)
             self.pos -= 1
             self.top -= 1
             self.render_rows()
-            bullet.utils.moveCursorUp(self.height)
+            utils.moveCursorUp(self.height)
         else:
             # Move within visible area
-            bullet.utils.clearLine()
+            utils.clearLine()
             self.pos -= 1
             self._print_row(self.pos + 1)
-            bullet.utils.moveCursorUp(1)
+            utils.moveCursorUp(1)
             self._print_row(self.pos)
 
-    @bullet.keyhandler.register(bullet.charDef.ARROW_DOWN_KEY)
+    @keyhandler.register(charDef.ARROW_DOWN_KEY)
     def move_down(self) -> None:
         """Move selection down, scrolling if necessary."""
         bottom = self.top + self.height
@@ -223,61 +234,62 @@ class CheckScroll:
             if bottom == len(self.choices):
                 return
             # Scroll down
-            bullet.utils.moveCursorDown(1)
-            bullet.utils.clearConsoleUp(self.height + 2)
-            bullet.utils.moveCursorDown(1)
+            utils.moveCursorDown(1)
+            utils.clearConsoleUp(self.height + 2)
+            utils.moveCursorDown(1)
             self.pos += 1
             self.top += 1
             self.render_rows()
-            bullet.utils.moveCursorUp(1)
+            utils.moveCursorUp(1)
         else:
             # Move within visible area
-            bullet.utils.clearLine()
+            utils.clearLine()
             self.pos += 1
             self._print_row(self.pos - 1)
-            bullet.utils.moveCursorDown(1)
+            utils.moveCursorDown(1)
             self._print_row(self.pos)
 
-    @bullet.keyhandler.register(bullet.charDef.NEWLINE_KEY)
-    def accept(self) -> List[tuple[str, int]]:
+    @keyhandler.register(charDef.NEWLINE_KEY)
+    def accept(self) -> list[tuple[str, int]]:
         """Accept selection and return checked choices.
 
         Returns:
             List of selected choice strings
         """
-        bullet.utils.moveCursorDown(self.top + self.height - self.pos + 1)
-        bullet.utils.forceWrite("\n")
-        return [
-            (choice, process_index)
-            for choice, process_index, is_checked in zip(
-                self.choices, self.process_indices, self.checked
-            )
-            if is_checked
-        ]
+        utils.moveCursorDown(self.top + self.height - self.pos + 1)
+        utils.forceWrite("\n")
+        selections: list[tuple[str, int]] = []
+        for choice, process_index, is_checked in zip(
+            self.choices, self.process_indices, self.checked
+        ):
+            if is_checked and process_index is not None:
+                selections.append((choice, process_index))
+        return selections
 
-    @bullet.keyhandler.register(bullet.charDef.INTERRUPT_KEY)
+    @keyhandler.register(charDef.INTERRUPT_KEY)
     def interrupt(self) -> None:
         """Handle keyboard interrupt (Ctrl+C)."""
-        bullet.utils.moveCursorDown(self.top + self.height - self.pos)
+        utils.moveCursorDown(self.top + self.height - self.pos)
         raise KeyboardInterrupt
 
-    def launch(self) -> List[str]:
+    def launch(self) -> list[tuple[str, int]]:
         """Launch the interactive selection UI.
 
         Returns:
             List of selected choices
         """
         if self.prompt:
-            bullet.utils.forceWrite(self.prompt + "\n")
+            utils.forceWrite(self.prompt + "\n")
 
         self.render_rows()
-        bullet.utils.moveCursorUp(self.height)
+        utils.moveCursorUp(self.height)
 
-        with bullet.cursor.hide():
+        handle_input = cast(Callable[[], Any | None], getattr(self, "handle_input"))
+        with cursor.hide():
             while True:
-                result = self.handle_input()
+                result = handle_input()
                 if result is not None:
-                    return result
+                    return cast(list[tuple[str, int]], result)
 
     def _update_height(self) -> None:
         """Update the visible height based on terminal size."""
@@ -342,28 +354,30 @@ class CheckScroll:
             elif self.process_indices[i] is None:
                 self.process_indices[i] = DEFAULT_PROCESS_INDEX
 
-        checked_indices = sorted(
-            {
-                self.process_indices[i]
-                for i, checked in enumerate(self.checked)
-                if checked and self.process_indices[i] is not None
-            }
-        )
+        checked_indices: set[int] = set()
+        for i, checked in enumerate(self.checked):
+            process_index = self.process_indices[i]
+            if checked and process_index is not None:
+                checked_indices.add(process_index)
         if not checked_indices:
             return
 
-        mapping = {old: new for new, old in enumerate(checked_indices, start=1)}
+        mapping = {old: new for new, old in enumerate(sorted(checked_indices), start=1)}
         for i, checked in enumerate(self.checked):
-            if checked:
-                self.process_indices[i] = mapping[self.process_indices[i]]
+            process_index = self.process_indices[i]
+            if checked and process_index is not None:
+                self.process_indices[i] = mapping[process_index]
 
     def _redraw(self) -> None:
         """Redraw the UI while keeping the cursor position."""
-        bullet.utils.moveCursorDown(self.top + self.height - self.pos + 1)
-        bullet.utils.clearConsoleUp(self.height + 3)
-        bullet.utils.moveCursorDown(1)
+        utils.moveCursorDown(self.top + self.height - self.pos + 1)
+        utils.clearConsoleUp(self.height + 3)
+        utils.moveCursorDown(1)
 
         if self.prompt:
-            bullet.utils.forceWrite(self.prompt + "\n")
+            utils.forceWrite(self.prompt + "\n")
         self.render_rows()
-        bullet.utils.moveCursorUp(self.top + self.height - self.pos)
+        utils.moveCursorUp(self.top + self.height - self.pos)
+
+
+CheckScroll = cast(type[CheckScroll], keyhandler.init(CheckScroll))
