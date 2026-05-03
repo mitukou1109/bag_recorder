@@ -2,6 +2,9 @@
 
 from typing import List, Optional, Tuple
 
+import sys
+import termios
+
 from bag_recorder.check_scroll import CheckScroll
 
 # UI Constants
@@ -25,6 +28,13 @@ def select_topics(
     Returns:
         List of selected topics
     """
+    tty_state = None
+    if sys.stdin.isatty():
+        try:
+            tty_state = termios.tcgetattr(sys.stdin.fileno())
+        except termios.error:
+            tty_state = None
+
     selector = CheckScroll(
         prompt=UI_PROMPT,
         choices=topics,
@@ -34,4 +44,8 @@ def select_topics(
         align=UI_ALIGN,
         margin=UI_MARGIN,
     )
-    return selector.launch()
+    try:
+        return selector.launch()
+    finally:
+        if tty_state is not None:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, tty_state)
