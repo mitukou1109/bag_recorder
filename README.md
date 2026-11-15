@@ -56,19 +56,25 @@ When `record-bag` records topics with multiple process indices, ROS 2 bag direct
 /path/to/output-2
 ```
 
-Use `merge-bag` with the base path without the `-{index}` suffix:
+Specify a path prefix to merge all ROS 2 bag directories whose names start with that prefix (each must contain `metadata.yaml`):
 
 ```bash
 merge-bag /path/to/output
 ```
 
-By default, the merged bag is written to the same base path (`/path/to/output`). You can pass ROS 2 output bag options in `key:=value` format (See [here](https://github.com/ros2/rosbag2#converting-bags-merge-split-etc-) for available options):
+By default, the merged bag is written to the prefix path (`/path/to/output`) in MCAP format. You can pass ROS 2 output bag options in `key:=value` format (See [here](https://github.com/ros2/rosbag2#converting-bags-merge-split-etc-) for available options):
 
 ```bash
-merge-bag /path/to/output storage_id:=mcap
+merge-bag /path/to/output storage_id:=sqlite3
 ```
 
-If you already have a ROS 2 output options YAML file, pass it with `--options-file`:
+To merge specific bags directly, specify two or more bag paths. The default output is `merged_bag` in the first bag's parent directory; set `uri` to choose a different output path:
+
+```bash
+merge-bag /path/to/bag1 /path/to/bag2 uri:=/path/to/merged
+```
+
+If you already have an output options YAML file, pass it with `--options-file`:
 
 ```bash
 merge-bag /path/to/output --options-file /path/to/options.yaml
@@ -107,6 +113,6 @@ When multiple processes are used, the tool ensures unique bag names per process.
 
 ### Bag Merging
 
-- It searches the base path's parent directory for bag directories matching `{base}-{index}`.
+- With one bag argument, it searches the prefix path's parent directory for ROS 2 bag directories starting with that prefix. With multiple bag arguments, it merges those directories directly.
 - It runs `ros2 bag convert -i <bag-1> -i <bag-2> ... -o <options.yaml>`.
-- If `--options-file` is not provided, a temporary output options file is created under `/tmp/bag_recorder`.
+- If `--options-file` is not provided, a temporary output options file is created under `/tmp/bag_recorder.
