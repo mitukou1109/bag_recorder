@@ -1,8 +1,6 @@
 # bag_recorder
 
-Interactive ROS bag recorder with topic selection for ROS 1 and ROS 2.
-
-> Streamline your ROS bag recording workflow with an intuitive terminal UI designed to make topic selection quick and effortless.
+Interactive ROS bag recorder for ROS 1 and ROS 2.
 
 ## ✨ Features
 
@@ -11,7 +9,6 @@ Interactive ROS bag recorder with topic selection for ROS 1 and ROS 2.
 - **Topic Filtering**: Excludes common system topics (`/rosout`, `/rosout_agg`, `/parameter_events`) by default
 - **Selection Memory**: Remembers your last selection (including process indices) for faster setup on subsequent runs
 - **Per-Process Grouping**: Assign topics to different record processes with left/right keys
-- **Scrollable Interface**: Handles large topic lists with visual scroll indicators
 - **ROS 2 Bag Merging**: Merge per-process ROS 2 bag directories back into a single bag with `merge-bag`
 
 ## 📋 Requirements
@@ -41,6 +38,14 @@ Pass additional options to the bag record command:
 ```bash
 record-bag -a -o /path/to/output
 ```
+
+Use `--suffix` to insert text before the process index:
+
+```bash
+record-bag -o /path/to/output --suffix suffix
+```
+
+This records to `/path/to/output-suffix-1`, `/path/to/output-suffix-2`, etc.
 
 ### Merge ROS 2 Bags
 
@@ -90,10 +95,7 @@ uv tool upgrade bag_recorder
 ### Process Index
 
 Each checked topic has a process index (shown before the topic name) that determines which `rosbag`/`ros2 bag` process it belongs to.
-
-- Topics with the same index are recorded by the same process.
-- Indices are always contiguous among checked topics (1..N).
-- Unchecked topics show `[-]` (no index assigned).
+Topics with the same index are recorded by the same process.
 
 ### Bag Naming
 

@@ -30,6 +30,15 @@ class RosConfig:
     default_name_template: str
 
 
+@dataclass(frozen=True)
+class BagNameConfig:
+    """Output name components shared by recording processes."""
+
+    output_name: str | None
+    timestamp: str
+    suffix: str = ""
+
+
 ROS1_CONFIG = RosConfig(
     topic_list_cmd=["rostopic", "list"],
     bag_record_cmd=["rosbag", "record"],
@@ -89,6 +98,8 @@ def record_bag(
     config: RosConfig,
     selections: List[Tuple[str, int]],
     additional_args: List[str],
+    *,
+    suffix: str = "",
 ) -> None:
     """Start ROS bag recording.
 
@@ -96,6 +107,7 @@ def record_bag(
         config: ROS command and naming configuration
         selections: Topics with their assigned process index
         additional_args: Additional command line arguments
+        suffix: Text inserted before the process index
     """
     if not selections:
         return
@@ -104,14 +116,18 @@ def record_bag(
     for topic, process_index in selections:
         grouped_topics.setdefault(process_index, []).append(topic)
 
-    output_name_arg = _extract_output_name(additional_args, config.output_flag)
-    timestamp = time.strftime(config.timestamp_format)
+    additional_args = list(additional_args)
+    naming = BagNameConfig(
+        output_name=_extract_output_name(additional_args, config.output_flag),
+        timestamp=time.strftime(config.timestamp_format),
+        suffix=suffix,
+    )
 
     processes = []
     for process_index in sorted(grouped_topics):
         topics = grouped_topics[process_index]
         output_args = _build_output_args(
-            config, output_name_arg, process_index, timestamp
+            config, naming, process_index
         )
         processes.append(
             subprocess.Popen(
@@ -128,28 +144,31 @@ def record_bag(
 
 
 def _extract_output_name(args: List[str], output_flag: str) -> str | None:
-    """Return the output name passed by the user, if any."""
+    """Remove and return the output name passed by the user, if any."""
     if output_flag not in args:
         return None
     try:
         idx = args.index(output_flag)
-        return args[idx + 1]
+        output_name = args[idx + 1]
+        del args[idx:idx + 2]
+        return output_name
     except (ValueError, IndexError):
         return None
 
 
 def _build_output_args(
     config: RosConfig,
-    output_name: str | None,
+    naming: BagNameConfig,
     process_index: int,
-    timestamp: str,
 ) -> List[str]:
     """Build output args that guarantee unique bag names."""
-    if output_name:
-        name = f"{output_name}-{process_index}"
+    index = f"{naming.suffix}-{process_index}" if naming.suffix else str(process_index)
+
+    if naming.output_name:
+        name = f"{naming.output_name}-{index}"
     else:
         name = config.default_name_template.format(
-            timestamp=timestamp, index=process_index
+            timestamp=naming.timestamp, index=index
         )
     return [config.output_flag, name]
 
